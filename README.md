@@ -47,7 +47,7 @@ dmesg
 sudo chmod a+rw /dev/tty...
 ```
 
-In the ```dtps``` folder inside ```vr-driver``` the program of the robot is included. This program needs to be converted to the controller by using the touch pad of the Panasonic robot. Just execute this file on robot first.
+In the ```dtps``` folder inside ```vr-driver``` the program of the robot is included (```Position_Streaming.prg```). This program needs to be converted to the controller by using the touch pad of the Panasonic robot. Just execute this file on robot first.
 
 ## Launching the interface
 
