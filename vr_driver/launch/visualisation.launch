@@ -1,0 +1,5 @@
+<launch>
+
+  <include file="$(find panasonic_vr006l_moveit_config)/launch/demo.launch"/>
+
+</launch>

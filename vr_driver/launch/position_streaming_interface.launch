@@ -1,0 +1,6 @@
+<launch>
+ 
+  <node name="interface" pkg="vr_driver" type="interface.py" respawn="false" output="screen">
+  </node>
+  
+</launch>

@@ -1,0 +1,10 @@
+moveit_setup_assistant_config:
+  URDF:
+    package: panasonic_vr006l_support
+    relative_path: urdf/panasonic.urdf
+  SRDF:
+    relative_path: config/panasonic.srdf
+  CONFIG:
+    author_name: david
+    author_email: davidds96@gmail.com
+    generated_timestamp: 1527074323
