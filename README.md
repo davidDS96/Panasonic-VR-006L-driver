@@ -47,6 +47,8 @@ dmesg
 sudo chmod a+rw /dev/tty...
 ```
 
+In the ```dtps``` folder inside ```vr-driver``` the program of the robot is included. This program needs to be converted to the controller by using the touch pad of the Panasonic robot. Just execute this file on robot first.
+
 ## Launching the interface
 
 Finally, the driver can be used by launching the ``` position_streaming_interface.launch``` file that launches the driver node which initializes the communication between ROS and the robot:
