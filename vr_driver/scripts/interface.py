@@ -34,6 +34,7 @@ from pyprofibus import DpTelegram_SetPrm_Req, monotonic_time
 import moveit_commander
 import moveit_msgs.msg
 import geometry_msgs.msg
+from visualization_msgs.msg import Marker
 
 ###########################################
 
@@ -272,18 +273,34 @@ movement in simulation together with RViz.
 def visualiseMovement(viz_array):
     
     moveit_commander.roscpp_initialize(sys.argv)
+
+    topic = 'visualization_marker'
+    publisher = rospy.Publisher(topic, Marker)
+
     robot = moveit_commander.RobotCommander()
     scene = moveit_commander.PlanningSceneInterface()
     group = moveit_commander.MoveGroupCommander("manipulator")
     display_trajectory_publisher = rospy.Publisher('/move_group/display_planned_path', moveit_msgs.msg.DisplayTrajectory)
 
     pose_target = geometry_msgs.msg.Pose()
-    print viz_array[0], viz_array[1], viz_array[2]
     pose_target.position.x = float(viz_array[0])/(1000*2.6)      # convert to meter for ROS
     pose_target.position.y = float(viz_array[1])/1000
-    print pose_target.position.y
     pose_target.position.z = float(viz_array[2])/(1000*2.5)
     group.set_pose_target(pose_target)
+
+    marker = Marker()
+    marker.type = marker.SPHERE
+    marker.action = marker.ADD
+    marker.scale.x = 0.1
+    marker.scale.y = 0.1
+    marker.scale.z = 0.1
+    marker.color.a = 1.0
+    marker.color.r = 1.0
+    marker.color.g = 1.0
+    marker.color.b = 1.0
+    marker.pose.orientation.x = float(viz_array[0])/(1000*2.6)
+    marker.pose.orientation.y = float(viz_array[1])/1000
+    marker.pose.orientation.z = float(viz_array[2])/(1000*2.5) 
 
     plan1 = group.plan()
     
@@ -322,9 +339,12 @@ def main():
                 rospy.loginfo("Sending position and orientation to robot")
                 
                 outputArray = sendValues(master, slaveDesc, dataArray)
+                print outputArray
                 
                 if outputArray[1] != 0 or outputArray[2] != 0 or outputArray[3] != 0 or outputArray[4] != 0 or outputArray[5] != 0:
                     print outputArray
+
+                rospy.spin()
 
 
     except KeyboardInterrupt:
