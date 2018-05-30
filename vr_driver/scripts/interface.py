@@ -34,7 +34,10 @@ from pyprofibus import DpTelegram_SetPrm_Req, monotonic_time
 import moveit_commander
 import moveit_msgs.msg
 import geometry_msgs.msg
+from geometry_msgs.msg import Pose
+import visualization_msgs.msg 
 from visualization_msgs.msg import Marker
+
 
 ###########################################
 
@@ -246,6 +249,7 @@ def setupCommunication():
 
     except pyprofibus.ProfibusError as e:
         print("Terminating: %s" % str(e))
+        rospy.logerr("Communication is lost. Try to initialize again")
 
         return None, None
 
@@ -264,6 +268,28 @@ def sendValues(master, slaveDesc, dataArray):
 
     return outputArray
 
+
+
+'''
+The function deformatOutput() has as argument the output that the slave send to the
+master and return an integer number that respresents the Cartesian position of the
+robot: [X,Y,Z]^{T}. This representation is needed to visualise the outcome in RViz.
+'''
+def deformatOutput(newArray):
+    x1 = '{0:08b}'.format(newArray[0])
+    x2 = '{0:08b}'.format(newArray[1])
+    y1 = '{0:08b}'.format(newArray[2])
+    y2 = '{0:08b}'.format(newArray[3])
+    z1 = '{0:08b}'.format(newArray[4])
+    z2 = '{0:08b}'.format(newArray[5])
+
+    X = int(x1+x2,2)
+    Y = int(y1+y2,2)
+    Z = int(z1+z2,2)
+
+    return [X, Y, Z]
+
+
 '''
 The function visualiseMovement() has as argument the array of integer numbers that
 corresponds to the Cartesian position and orientation of a 3D point. MoveIt! shows the 
@@ -274,45 +300,74 @@ def visualiseMovement(viz_array):
     
     moveit_commander.roscpp_initialize(sys.argv)
 
-    topic = 'visualization_marker'
-    publisher = rospy.Publisher(topic, Marker)
-
     robot = moveit_commander.RobotCommander()
     scene = moveit_commander.PlanningSceneInterface()
-    group = moveit_commander.MoveGroupCommander("manipulator")
-    display_trajectory_publisher = rospy.Publisher('/move_group/display_planned_path', moveit_msgs.msg.DisplayTrajectory)
+    group_name = "manipulator"
+    group = moveit_commander.MoveGroupCommander(group_name)
+    display_trajectory_publisher = rospy.Publisher('/move_group/display_planned_path', moveit_msgs.msg.DisplayTrajectory, queue_size=20)
 
     pose_target = geometry_msgs.msg.Pose()
-    pose_target.position.x = float(viz_array[0])/(1000*2.6)      # convert to meter for ROS
+    pose_target.position.x = float(viz_array[0])/(1000*2.604)      # convert to meter for ROS
     pose_target.position.y = float(viz_array[1])/1000
-    pose_target.position.z = float(viz_array[2])/(1000*2.5)
+    pose_target.position.z = float(viz_array[2])/(1000*2.487)
+
+    pi = math.pi
+    pose_target.orientation.x = (float(viz_array[3])*pi)/180
+    pose_target.orientation.y = (float(viz_array[4])*pi)/180 - pi/4
+    print pose_target.orientation.y
+    pose_target.orientation.z = (float(viz_array[5])*pi)/180
+
     group.set_pose_target(pose_target)
 
-    marker = Marker()
-    marker.type = marker.SPHERE
-    marker.action = marker.ADD
-    marker.scale.x = 0.1
-    marker.scale.y = 0.1
-    marker.scale.z = 0.1
-    marker.color.a = 1.0
-    marker.color.r = 1.0
-    marker.color.g = 1.0
-    marker.color.b = 1.0
-    marker.pose.orientation.x = float(viz_array[0])/(1000*2.6)
-    marker.pose.orientation.y = float(viz_array[1])/1000
-    marker.pose.orientation.z = float(viz_array[2])/(1000*2.5) 
-
-    plan1 = group.plan()
+    plan = group.plan()
     
     display_trajectory = moveit_msgs.msg.DisplayTrajectory()
+    display_trajectory_publisher.publish(display_trajectory)
+    group.execute(plan)
 
     moveit_commander.roscpp_shutdown()
 
 
 '''
+The function setMarker() uses the data that the robot sends to ROS to set a Marker
+in RViz. This Marker specifies the goal position of the robot's movement when the 
+robot has executed his trajectory and reported it to ROS.
+'''
+
+def setMarker(viz_array):
+    marker_publisher = rospy.Publisher('visualization_marker', Marker, queue_size=1)
+
+    sphere_marker = Marker()
+    sphere_marker.header.frame_id = "/base"
+
+    sphere_marker.type = sphere_marker.SPHERE
+    sphere_marker.action = sphere_marker.ADD
+    
+    sphere_marker.ns = "my_marker"
+    #sphere_marker.id = 0
+
+    sphere_marker.pose.position.x = float(viz_array[0])/(1000*2.604)
+    sphere_marker.pose.position.y = float(viz_array[1])/1000
+    sphere_marker.pose.position.z = float(viz_array[2])/(1000*2.487)
+    sphere_marker.pose.orientation.w = 1.0
+
+    sphere_marker.scale.x = 0.2
+    sphere_marker.scale.y = 0.2
+    sphere_marker.scale.z = 0.2
+
+    sphere_marker.color.a = 1.0
+    sphere_marker.color.r = 0.0
+    sphere_marker.color.g = 0.0
+    sphere_marker.color.b = 1.0
+
+    marker_publisher.publish(sphere_marker)
+
+
+
+'''
 The function main starts the ROS interface node that interacts with the robot controller. 
 First it starts the ROS node. Next it sets up the communication with the robot controller.
-The user input is used to splt up the amount of data. Afterwards communication with the 
+The user input is used to split up the amount of data. Afterwards communication with the 
 robot can be contracted.
 '''    
 
@@ -320,9 +375,9 @@ def main():
     try:
         rospy.init_node('interface', anonymous=True)
         
-        rospy.loginfo("Initializing position streaming interface %s")
+        rospy.loginfo("Initializing position streaming interface")
         
-        rospy.loginfo("Setting up communication with Panasonic robot controller %s")
+        rospy.loginfo("Setting up communication with Panasonic robot controller")
         
         master, slaveDesc = setupCommunication()
 
@@ -331,10 +386,11 @@ def main():
 
             while True:
             
-                rospy.loginfo("Getting user information from terminal %s")
+                rospy.loginfo("Getting user information from terminal")
 
                 dataArray, viz_array = getValues()
                 visualiseMovement(viz_array)            # comment this function if visualisation isn't necessary
+                
                 
                 rospy.loginfo("Sending position and orientation to robot")
                 
@@ -342,7 +398,11 @@ def main():
                 print outputArray
                 
                 if outputArray[1] != 0 or outputArray[2] != 0 or outputArray[3] != 0 or outputArray[4] != 0 or outputArray[5] != 0:
-                    print outputArray
+                    newArray = outputArray
+                    pos_robot = deformatOutput(newArray)
+                    setMarker(pos_robot)
+
+                    rospy.loginfo("Robot sent feedback of actual Cartesian position")
 
                 rospy.spin()
 
