@@ -335,32 +335,43 @@ robot has executed his trajectory and reported it to ROS.
 '''
 
 def setMarker(viz_array):
-    marker_publisher = rospy.Publisher('visualization_marker', Marker, queue_size=1)
-
-    sphere_marker = Marker()
-    sphere_marker.header.frame_id = "/base"
-
-    sphere_marker.type = sphere_marker.SPHERE
-    sphere_marker.action = sphere_marker.ADD
     
-    sphere_marker.ns = "my_marker"
-    #sphere_marker.id = 0
+    start = time.time()
 
-    sphere_marker.pose.position.x = float(viz_array[0])/(1000*2.604)
-    sphere_marker.pose.position.y = float(viz_array[1])/1000
-    sphere_marker.pose.position.z = float(viz_array[2])/(1000*2.487)
-    sphere_marker.pose.orientation.w = 1.0
+    period = 5
 
-    sphere_marker.scale.x = 0.2
-    sphere_marker.scale.y = 0.2
-    sphere_marker.scale.z = 0.2
+    while not rospy.is_shutdown():
 
-    sphere_marker.color.a = 1.0
-    sphere_marker.color.r = 0.0
-    sphere_marker.color.g = 0.0
-    sphere_marker.color.b = 1.0
+        topic = 'visualization_marker'
+        marker_publisher = rospy.Publisher(topic, Marker, queue_size=10)
 
-    marker_publisher.publish(sphere_marker)
+        sphere_marker = Marker()
+        sphere_marker.header.frame_id = "/base"
+
+        sphere_marker.type = Marker.SPHERE
+        sphere_marker.action = Marker.ADD
+
+        #sphere_marker.ns = "my_marker"
+        #sphere_marker.id = 0
+        
+        sphere_marker.scale.x = 0.05
+        sphere_marker.scale.y = 0.05
+        sphere_marker.scale.z = 0.05
+
+        sphere_marker.color.a = 1.0
+        sphere_marker.color.r = 0.0
+        sphere_marker.color.g = 0.0
+        sphere_marker.color.b = 1.0
+
+        sphere_marker.pose.position.x = float(viz_array[0])/(1000*2.604)
+        sphere_marker.pose.position.y = float(viz_array[1])/1000
+        sphere_marker.pose.position.z = float(viz_array[2])/(1000*2.487)
+        sphere_marker.pose.orientation.w = 1.0
+
+        marker_publisher.publish(sphere_marker)
+
+        if time.time() > start + period:
+            break
 
 
 
@@ -390,17 +401,16 @@ def main():
 
                 dataArray, viz_array = getValues()
                 visualiseMovement(viz_array)            # comment this function if visualisation isn't necessary
-                
-                
+                                
                 rospy.loginfo("Sending position and orientation to robot")
                 
                 outputArray = sendValues(master, slaveDesc, dataArray)
-                print outputArray
+               
                 
                 if outputArray[1] != 0 or outputArray[2] != 0 or outputArray[3] != 0 or outputArray[4] != 0 or outputArray[5] != 0:
                     newArray = outputArray
                     pos_robot = deformatOutput(newArray)
-                    setMarker(pos_robot)
+                    setMarker(pos_robot)                # set marker at Cartesian point in RViz when robot has reached desired pose
 
                     rospy.loginfo("Robot sent feedback of actual Cartesian position")
 
