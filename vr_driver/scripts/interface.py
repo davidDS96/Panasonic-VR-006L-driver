@@ -308,7 +308,7 @@ def visualiseMovement(viz_array):
 
     pose_target = geometry_msgs.msg.Pose()
     pose_target.position.x = float(viz_array[0])/(1000*2.604)      # convert to meter for ROS
-    pose_target.position.y = float(viz_array[1])/1000
+    pose_target.position.y = float(viz_array[1])/(1000*2.5)
     pose_target.position.z = float(viz_array[2])/(1000*2.487)
 
     pi = math.pi
@@ -401,7 +401,7 @@ def main():
 
                 dataArray, viz_array = getValues()
                 visualiseMovement(viz_array)            # comment this function if visualisation isn't necessary
-                                
+                setMarker(viz_array)                
                 rospy.loginfo("Sending position and orientation to robot")
                 
                 outputArray = sendValues(master, slaveDesc, dataArray)
